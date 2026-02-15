@@ -78,6 +78,36 @@ npm run android
 2. Android 原生 `BuildConfig` 注入（来自 `-PLY_*` / 系统环境变量 / `.env.mobile`）
 3. 默认值（仅 `API_BASE_URL` 有默认；地图 key 默认空）
 
+## Android 正式签名（Release）
+
+1. 生成正式 keystore（示例）：
+
+```sh
+cd android
+mkdir -p keystore
+keytool -genkeypair -v \
+  -storetype PKCS12 \
+  -keystore keystore/lycoris-upload.jks \
+  -alias lycoris-upload \
+  -keyalg RSA -keysize 2048 -validity 36500
+```
+
+2. 复制并填写签名配置：
+
+```sh
+cp keystore.properties.example keystore.properties
+```
+
+3. 构建 release apk：
+
+```sh
+./gradlew assembleRelease
+```
+
+产物路径：
+
+`android/app/build/outputs/apk/release/app-release.apk`
+
 ## 下一步建议
 
 1. 接入点位新增/编辑（当前“添加”按钮先跳转网页端）。

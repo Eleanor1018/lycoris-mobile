@@ -3,6 +3,9 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
 
+import java.util.Properties
+import java.io.FileInputStream
+
 def readEnvValue = { File envFile, String key ->
     if (!envFile.exists()) return ""
     def prefix = "${key}="
@@ -45,6 +48,25 @@ def tiandituApiKey = (
         ?: readEnvValue(localEnvFile, "LY_TIANDITU_API_KEY")
         ?: ""
 ).toString()
+
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+def releaseStoreFileRaw = (keystoreProperties['storeFile'] ?: '').toString().trim()
+def releaseStorePassword = (keystoreProperties['storePassword'] ?: '').toString().trim()
+def releaseKeyAlias = (keystoreProperties['keyAlias'] ?: '').toString().trim()
+def releaseKeyPassword = (keystoreProperties['keyPassword'] ?: '').toString().trim()
+def releaseStoreFile = releaseStoreFileRaw ? rootProject.file(releaseStoreFileRaw) : null
+def hasReleaseSigningConfig = (
+    releaseStoreFile != null &&
+    releaseStoreFile.exists() &&
+    releaseStorePassword &&
+    releaseKeyAlias &&
+    releaseKeyPassword
+)
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -139,15 +161,27 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (hasReleaseSigningConfig) {
+                storeFile releaseStoreFile
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            if (hasReleaseSigningConfig) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.warn("[lycoris-mobile] Release signing is not configured. Falling back to debug keystore.")
+                logger.warn("[lycoris-mobile] Create android/keystore.properties from keystore.properties.example before production release.")
+                signingConfig signingConfigs.debug
+            }
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
